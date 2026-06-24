@@ -10,7 +10,7 @@ description: "技术栈说明"
  - 图片生成模型 doubao-seedream-4.0
  - 视频生成模型 豆包 Seeddance 1.5 Pro
 
-  # 技术架构
+# 技术架构
   
 	用户操作
 		↓
@@ -26,3 +26,14 @@ description: "技术栈说明"
 	useChat Hook 更新消息状态
 		↓
 	消息列表UI 展示对话/图片/视频
+
+# 依赖项
+
+## 安装核心依赖
+npm install ai @ai-sdk/react @ai-sdk/openai
+## 安装 Next.js 和 React（如果还没有安装）
+npm install next react react-dom
+## 安装其他必要的依赖
+npm install zod 
+## 安装开发依赖（TypeScript 类型定义）
+npm install -D @types/node @types/react @types/react-dom typescript
