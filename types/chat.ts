@@ -23,6 +23,7 @@ export interface ChatIntentDataPart {
 }
 
 export interface ChatDataParts {
+  [key: string]: unknown;
   media: ChatMediaDataPart;
   status: ChatStatusDataPart;
   intent: ChatIntentDataPart;

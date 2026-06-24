@@ -1,5 +1,7 @@
 import { memo, useMemo } from 'react';
 
+import Image from 'next/image';
+
 import type { ChatMediaDataPart, ChatUIMessage } from '@/types/chat';
 
 interface ChatMessageListProps {
@@ -39,10 +41,12 @@ const MessageBubble = memo(function MessageBubble({ message }: { message: ChatUI
         {mediaParts.map((part, index) => (
           <div key={`${message.id}-media-${index}`} className='space-y-2'>
             {part.data.kind === 'image' ? (
-              <img
+              <Image
                 src={part.data.url}
                 alt='生成图片'
-                loading='lazy'
+                width={1024}
+                height={1024}
+                unoptimized
                 className='w-full rounded-lg border border-zinc-200 object-cover'
               />
             ) : (

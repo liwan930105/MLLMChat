@@ -1,12 +1,19 @@
-import type { PropsWithChildren } from 'react';
+import type { PropsWithChildren, ReactElement } from 'react';
 
 import { ErrorBoundary, type FallbackProps } from 'react-error-boundary';
 
-const ErrorFallback = ({ error, resetErrorBoundary }: FallbackProps): JSX.Element => {
+const getErrorMessage = (error: unknown): string => {
+  if (error instanceof Error) {
+    return error.message;
+  }
+  return '未知错误';
+};
+
+const ErrorFallback = ({ error, resetErrorBoundary }: FallbackProps): ReactElement => {
   return (
     <div className='mx-auto mt-10 w-full max-w-xl rounded-xl border border-red-200 bg-red-50 p-4 text-red-700'>
       <h2 className='text-sm font-semibold'>页面出现错误</h2>
-      <p className='mt-2 text-sm'>{error.message}</p>
+      <p className='mt-2 text-sm'>{getErrorMessage(error)}</p>
       <button
         type='button'
         onClick={resetErrorBoundary}
@@ -18,7 +25,7 @@ const ErrorFallback = ({ error, resetErrorBoundary }: FallbackProps): JSX.Elemen
   );
 };
 
-export const AppErrorBoundary = ({ children }: PropsWithChildren): JSX.Element => {
+export const AppErrorBoundary = ({ children }: PropsWithChildren): ReactElement => {
   return (
     <ErrorBoundary
       FallbackComponent={ErrorFallback}

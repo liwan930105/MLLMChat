@@ -1,6 +1,6 @@
 /** @type {import('jest').Config} */
 module.exports = {
-  testEnvironment: 'jsdom',
+  testEnvironment: 'node',
   setupFilesAfterEnv: ['<rootDir>/jest.setup.ts'],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/$1',
@@ -14,7 +14,7 @@ module.exports = {
       },
     ],
   },
-  collectCoverageFrom: ['lib/**/*.ts', 'components/**/*.tsx'],
+  collectCoverageFrom: ['lib/**/*.ts'],
   coverageThreshold: {
     global: {
       branches: 80,

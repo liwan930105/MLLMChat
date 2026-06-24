@@ -45,4 +45,30 @@ describe('chat intent', () => {
 
     expect(getLatestUserText(messages)).toBe('最后一条用户消息');
   });
+
+  it('should return empty text when user message is missing', () => {
+    const messages: ChatUIMessage[] = [
+      {
+        id: 'a-1',
+        role: 'assistant',
+        parts: [
+          {
+            type: 'text',
+            text: '仅助手消息',
+          },
+        ],
+      },
+    ];
+
+    expect(getLatestUserText(messages)).toBe('');
+  });
+
+  it('should skip empty user text and fallback to earlier user message', () => {
+    const messages: ChatUIMessage[] = [
+      buildUserMessage('u-1', '可用内容'),
+      buildUserMessage('u-2', '   '),
+    ];
+
+    expect(getLatestUserText(messages)).toBe('可用内容');
+  });
 });

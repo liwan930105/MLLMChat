@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState, type FormEvent } from 'react';
+import { useCallback, useMemo, useState, type FormEvent, type ReactElement } from 'react';
 
 import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport } from 'ai';
@@ -9,11 +9,38 @@ import { INPUT_PLACEHOLDER, INTENT_BADGE_TEXT } from '@/lib/constants';
 import { appFetch } from '@/lib/request';
 import type { ChatIntentType, ChatUIMessage } from '@/types/chat';
 
+interface StatusData {
+  level: 'info' | 'error';
+  message: string;
+}
+
+interface IntentData {
+  intent: ChatIntentType;
+}
+
 const normalizeInput = (input: string): string => {
   return input.trim();
 };
 
-export const MultimodalChat = (): JSX.Element => {
+const isObjectRecord = (value: unknown): value is Record<string, unknown> => {
+  return typeof value === 'object' && value !== null;
+};
+
+const isStatusData = (value: unknown): value is StatusData => {
+  if (!isObjectRecord(value)) {
+    return false;
+  }
+  return (value.level === 'info' || value.level === 'error') && typeof value.message === 'string';
+};
+
+const isIntentData = (value: unknown): value is IntentData => {
+  if (!isObjectRecord(value)) {
+    return false;
+  }
+  return value.intent === 'text' || value.intent === 'image' || value.intent === 'video';
+};
+
+export const MultimodalChat = (): ReactElement => {
   const [input, setInput] = useState<string>('');
   const [runtimeStatus, setRuntimeStatus] = useState<string>('准备就绪');
   const [latestIntent, setLatestIntent] = useState<ChatIntentType>('text');
@@ -28,10 +55,10 @@ export const MultimodalChat = (): JSX.Element => {
   const { messages, sendMessage, status, error, stop, clearError } = useChat<ChatUIMessage>({
     transport,
     onData: (part) => {
-      if (part.type === 'data-status') {
+      if (part.type === 'data-status' && isStatusData(part.data)) {
         setRuntimeStatus(part.data.message);
       }
-      if (part.type === 'data-intent') {
+      if (part.type === 'data-intent' && isIntentData(part.data)) {
         setLatestIntent(part.data.intent);
       }
     },

@@ -1,9 +1,10 @@
 import Head from 'next/head';
+import type { ReactElement } from 'react';
 
 import { AppErrorBoundary } from '@/components/AppErrorBoundary';
 import { MultimodalChat } from '@/components/MultimodalChat';
 
-export default function HomePage(): JSX.Element {
+export default function HomePage(): ReactElement {
   return (
     <>
       <Head>
