@@ -7,21 +7,17 @@ import {
 } from 'ai';
 import type { UIMessageStreamWriter } from 'ai';
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { z } from 'zod';
 
-import { detectIntentFromText, getLatestUserText } from '@/lib/chat-intent';
-import { MAX_GENERATION_TOKENS } from '@/lib/constants';
+import { enforceChatApiGuard } from '@/lib/api-guard';
+import { detectIntentFromText, getLatestUserText, resolveMediaPrompt } from '@/lib/chat-intent';
+import { parseChatRequest, toChatUIMessages } from '@/lib/chat-request-schema';
+import { DEFAULT_SYSTEM_PROMPT, MAX_GENERATION_TOKENS } from '@/lib/constants';
 import { getDeepSeekLanguageModel } from '@/lib/model-providers';
 import { generateImage, generateVideo } from '@/lib/multimodal-service';
-import type { ChatIntentType, ChatRequestBody, ChatUIMessage } from '@/types/chat';
+import type { ChatIntentType, ChatUIMessage } from '@/types/chat';
 
 const METHOD_NOT_ALLOWED = '仅支持 POST 请求';
-
-const chatRequestSchema = z.object({
-  id: z.string().optional(),
-  messages: z.array(z.custom<ChatUIMessage>()),
-  intentHint: z.enum(['text', 'image', 'video']).optional(),
-});
+const EMPTY_TEXT_PROMPT = '请输入内容后再发送';
 
 const getIntent = (hint: ChatIntentType | undefined, text: string): ChatIntentType => {
   if (hint) {
@@ -67,13 +63,18 @@ const handleMediaIntent = async (
   intent: ChatIntentType,
   prompt: string,
 ): Promise<void> => {
-  writeStatus(writer, 'info', intent === 'image' ? '正在生成图片...' : '正在生成视频...');
-  const media = intent === 'image' ? await generateImage(prompt) : await generateVideo(prompt);
+  writeStatus(writer, 'info', intent === 'image' ? '正在生成图片...' : '正在创建视频任务...');
+  const media =
+    intent === 'image'
+      ? await generateImage(prompt)
+      : await generateVideo(prompt, {
+          onStatus: (message) => writeStatus(writer, 'info', message),
+        });
   writer.write({
     type: 'data-media',
     data: media,
   });
-  writeAssistantText(writer, `已完成${media.kind === 'image' ? '图片' : '视频'}生成，结果见下方预览。`);
+  writeAssistantText(writer, `已完成${media.kind === 'image' ? '图片' : '视频'}生成。`);
   writeStatus(writer, 'info', `${media.kind === 'image' ? '图片' : '视频'}生成完成`);
 };
 
@@ -83,15 +84,30 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return;
   }
 
-  const parsedBody = chatRequestSchema.safeParse(req.body as ChatRequestBody);
-  if (!parsedBody.success) {
+  const guardResult = enforceChatApiGuard(req);
+  if (!guardResult.ok) {
+    res.status(guardResult.status).json({ error: guardResult.message });
+    return;
+  }
+
+  const parsedBody = parseChatRequest(req.body);
+  if (!parsedBody) {
     res.status(400).json({ error: '请求参数不合法' });
     return;
   }
 
-  const { messages, intentHint } = parsedBody.data;
+  const messages = toChatUIMessages(parsedBody.messages);
+  const { intentHint, systemPrompt } = parsedBody;
   const latestUserText = getLatestUserText(messages);
   const intent = getIntent(intentHint, latestUserText);
+
+  if (intent === 'text' && latestUserText.trim().length === 0) {
+    res.status(400).json({ error: EMPTY_TEXT_PROMPT });
+    return;
+  }
+
+  const resolvedSystemPrompt = systemPrompt?.trim() || DEFAULT_SYSTEM_PROMPT;
+  const mediaPrompt = resolveMediaPrompt(latestUserText, intent);
 
   const stream = createUIMessageStream<ChatUIMessage>({
     execute: async ({ writer }) => {
@@ -108,19 +124,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           const result = streamText({
             model: getDeepSeekLanguageModel(),
             messages: await convertToModelMessages(messages),
-            system:
-              '你是一个专业、简洁的多模态助手。回答应清晰、结构化、避免冗长，尽量给出可执行建议。',
+            system: resolvedSystemPrompt,
             maxOutputTokens: MAX_GENERATION_TOKENS,
           });
           writer.merge(result.toUIMessageStream<ChatUIMessage>());
           return;
         }
 
-        await handleMediaIntent(writer, intent, latestUserText);
+        await handleMediaIntent(writer, intent, mediaPrompt);
       } catch (error) {
         const message = error instanceof Error ? error.message : '处理请求时发生未知错误';
         writeStatus(writer, 'error', message);
-        writeAssistantText(writer, `请求失败：${message}`);
       }
     },
   });

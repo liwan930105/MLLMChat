@@ -10,6 +10,7 @@ export default function HomePage(): ReactElement {
       <Head>
         <title>MLLM Chat</title>
         <meta name='description' content='多模态聊天应用，支持文本、图片、视频生成。' />
+        <meta name='viewport' content='width=device-width, initial-scale=1, viewport-fit=cover' />
       </Head>
       <AppErrorBoundary>
         <MultimodalChat />

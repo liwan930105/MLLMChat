@@ -1,5 +1,22 @@
 @import 'tailwindcss';
 
+@theme {
+  --color-brand-500: #4f46e5;
+  --color-brand-600: #4338ca;
+
+  --color-ding-50: #eff8ff;
+  --color-ding-100: #dbeeff;
+  --color-ding-200: #b8dcff;
+  --color-ding-400: #4da6ff;
+  --color-ding-500: #1e90ff;
+  --color-ding-600: #1878db;
+  --color-ding-700: #1565a8;
+  --color-ding-800: #0f4c7a;
+
+  --color-wechat-bubble: #95ec69;
+  --color-wechat-chat: #ededed;
+}
+
 :root {
   color-scheme: light;
 }
@@ -8,9 +25,15 @@
   box-sizing: border-box;
 }
 
+html,
+body,
+#__next {
+  height: 100%;
+}
+
 body {
   margin: 0;
-  background-color: #f4f4f5;
+  background-color: #ededed;
   color: #18181b;
   font-family:
     'Inter',
@@ -23,4 +46,60 @@ body {
 a {
   color: inherit;
   text-decoration: none;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.streaming-cursor {
+  width: 2px;
+  height: 1em;
+  background-color: currentColor;
+  animation: blink 1s step-end infinite;
+  vertical-align: text-bottom;
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+.typing-dot {
+  animation: typing-bounce 1.2s infinite ease-in-out;
+}
+
+.typing-dot:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.typing-dot:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes typing-bounce {
+  0%,
+  80%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.4;
+  }
+  40% {
+    transform: translateY(-3px);
+    opacity: 1;
+  }
+}
+
+.user-message-bubble {
+  background-color: #95ec69;
+  color: #18181b;
 }

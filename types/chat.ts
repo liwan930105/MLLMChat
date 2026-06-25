@@ -35,6 +35,7 @@ export interface ChatRequestBody {
   id?: string;
   messages: ChatUIMessage[];
   intentHint?: ChatIntentType;
+  systemPrompt?: string;
 }
 
 export interface MediaGenerationResult {

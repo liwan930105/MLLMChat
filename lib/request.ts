@@ -7,9 +7,25 @@ const DEFAULT_HEADERS: HeadersInit = {
   'Content-Type': 'application/json',
 };
 
+const buildAuthHeaders = (): HeadersInit => {
+  const chatApiKey = process.env.NEXT_PUBLIC_CHAT_API_KEY;
+  if (!chatApiKey) {
+    return {};
+  }
+
+  return {
+    'x-chat-api-key': chatApiKey,
+  };
+};
+
 const mergeHeaders = (headers?: HeadersInit): Headers => {
   const resolvedHeaders = new Headers(DEFAULT_HEADERS);
+  const authHeaders = new Headers(buildAuthHeaders());
   const extraHeaders = new Headers(headers);
+
+  authHeaders.forEach((value, key) => {
+    resolvedHeaders.set(key, value);
+  });
 
   extraHeaders.forEach((value, key) => {
     resolvedHeaders.set(key, value);

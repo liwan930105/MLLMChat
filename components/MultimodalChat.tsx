@@ -1,11 +1,16 @@
-import { useCallback, useMemo, useState, type FormEvent, type ReactElement } from 'react';
+import { useCallback, useMemo, useState, type ReactElement } from 'react';
 
 import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport } from 'ai';
-import clsx from 'clsx';
 
+import { ChatHeader } from '@/components/chat/ChatHeader';
+import { ChatInput } from '@/components/chat/ChatInput';
+import { SystemPromptPanel } from '@/components/chat/SystemPromptPanel';
+import { TypingIndicator } from '@/components/chat/TypingIndicator';
 import { ChatMessageList } from '@/components/ChatMessageList';
-import { INPUT_PLACEHOLDER, INTENT_BADGE_TEXT } from '@/lib/constants';
+import { useChatPersistence } from '@/hooks/useChatPersistence';
+import { INTENT_BADGE_TEXT } from '@/lib/constants';
+import { loadSystemPrompt } from '@/lib/chat-storage';
 import { appFetch } from '@/lib/request';
 import type { ChatIntentType, ChatUIMessage } from '@/types/chat';
 
@@ -17,6 +22,8 @@ interface StatusData {
 interface IntentData {
   intent: ChatIntentType;
 }
+
+type StatusLevel = 'info' | 'error';
 
 const normalizeInput = (input: string): string => {
   return input.trim();
@@ -42,8 +49,11 @@ const isIntentData = (value: unknown): value is IntentData => {
 
 export const MultimodalChat = (): ReactElement => {
   const [input, setInput] = useState<string>('');
-  const [runtimeStatus, setRuntimeStatus] = useState<string>('准备就绪');
+  const [runtimeStatus, setRuntimeStatus] = useState<string>('在线');
+  const [statusLevel, setStatusLevel] = useState<StatusLevel>('info');
   const [latestIntent, setLatestIntent] = useState<ChatIntentType>('text');
+  const [systemPrompt, setSystemPrompt] = useState<string>(() => loadSystemPrompt());
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const transport = useMemo(() => {
     return new DefaultChatTransport<ChatUIMessage>({
@@ -52,51 +62,81 @@ export const MultimodalChat = (): ReactElement => {
     });
   }, []);
 
-  const { messages, sendMessage, status, error, stop, clearError } = useChat<ChatUIMessage>({
+  const { messages, sendMessage, status, error, stop, clearError, setMessages } = useChat<ChatUIMessage>({
     transport,
     onData: (part) => {
       if (part.type === 'data-status' && isStatusData(part.data)) {
         setRuntimeStatus(part.data.message);
+        setStatusLevel(part.data.level);
       }
       if (part.type === 'data-intent' && isIntentData(part.data)) {
         setLatestIntent(part.data.intent);
       }
     },
+    onError: (chatError) => {
+      setRuntimeStatus(chatError.message);
+      setStatusLevel('error');
+    },
+    onFinish: () => {
+      setRuntimeStatus('在线');
+      setStatusLevel('info');
+    },
   });
 
+  const { clearHistory } = useChatPersistence({ messages, setMessages });
+
   const isBusy = status === 'submitted' || status === 'streaming';
+  const isSubmitted = status === 'submitted';
+  const isStreaming = status === 'streaming';
+
+  const buildRequestBody = useCallback(
+    (intentHint?: ChatIntentType): Record<string, unknown> => {
+      const body: Record<string, unknown> = {
+        systemPrompt,
+      };
+      if (intentHint) {
+        body.intentHint = intentHint;
+      }
+      return body;
+    },
+    [systemPrompt],
+  );
 
   const sendWithIntent = useCallback(
     async (intentHint?: ChatIntentType): Promise<void> => {
       const prompt = normalizeInput(input);
-      if (!prompt) {
+      const isMediaIntent = intentHint === 'image' || intentHint === 'video';
+
+      if (!prompt && !isMediaIntent) {
         setRuntimeStatus('请输入内容后再发送');
+        setStatusLevel('error');
         return;
       }
+
+      clearError();
+      setStatusLevel('info');
+      setRuntimeStatus(isMediaIntent ? '正在准备生成...' : 'AI 正在思考...');
 
       try {
         await sendMessage(
           { text: prompt },
           {
-            body: intentHint ? { intentHint } : {},
+            body: buildRequestBody(intentHint),
           },
         );
         setInput('');
       } catch (sendError) {
         const message = sendError instanceof Error ? sendError.message : '发送消息失败';
         setRuntimeStatus(message);
+        setStatusLevel('error');
       }
     },
-    [input, sendMessage],
+    [buildRequestBody, clearError, input, sendMessage],
   );
 
-  const handleSubmit = useCallback(
-    async (event: FormEvent<HTMLFormElement>): Promise<void> => {
-      event.preventDefault();
-      await sendWithIntent();
-    },
-    [sendWithIntent],
-  );
+  const handleSubmit = useCallback(async (): Promise<void> => {
+    await sendWithIntent();
+  }, [sendWithIntent]);
 
   const handleImage = useCallback(async (): Promise<void> => {
     await sendWithIntent('image');
@@ -108,78 +148,75 @@ export const MultimodalChat = (): ReactElement => {
 
   const handleStop = useCallback(async (): Promise<void> => {
     await stop();
-    setRuntimeStatus('已停止当前响应');
+    setRuntimeStatus('已停止生成');
+    setStatusLevel('info');
   }, [stop]);
 
+  const handleClearError = useCallback((): void => {
+    clearError();
+    setRuntimeStatus('在线');
+    setStatusLevel('info');
+  }, [clearError]);
+
+  const handleClearHistory = useCallback((): void => {
+    if (messages.length === 0) {
+      return;
+    }
+    if (window.confirm('确定清空所有聊天记录吗？')) {
+      clearHistory();
+      setRuntimeStatus('在线');
+      setStatusLevel('info');
+    }
+  }, [clearHistory, messages.length]);
+
+  const handleSaveSystemPrompt = useCallback((prompt: string): void => {
+    setSystemPrompt(prompt);
+  }, []);
+
+  const displayStatus = error && statusLevel !== 'error' ? error.message : runtimeStatus;
+  const displayLevel: StatusLevel = error ? 'error' : statusLevel;
+  const showTypingIndicator = isSubmitted && messages[messages.length - 1]?.role !== 'assistant';
+
   return (
-    <div className='mx-auto flex min-h-screen w-full max-w-3xl flex-col gap-4 px-4 py-8'>
-      <header className='space-y-2'>
-        <h1 className='text-2xl font-semibold tracking-tight text-zinc-900'>MLLM Chat</h1>
-        <p className='text-sm text-zinc-600'>支持文本对话、图片生成与视频生成，页面风格保持简洁。</p>
-      </header>
+    <div className='flex h-dvh flex-col bg-[#ededed]'>
+      <ChatHeader
+        title='MLLM 智能助手'
+        subtitle={`${INTENT_BADGE_TEXT[latestIntent]} · ${displayStatus}`}
+        onOpenSettings={() => setSettingsOpen(true)}
+        onClearHistory={handleClearHistory}
+      />
 
-      <div className='rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-700'>
-        <span className='font-medium text-zinc-900'>当前模式：</span>
-        <span className='ml-2 rounded-full bg-zinc-100 px-2 py-0.5 text-xs'>{INTENT_BADGE_TEXT[latestIntent]}</span>
-        <span className='ml-3 text-zinc-500'>状态：{runtimeStatus}</span>
-      </div>
-
-      <ChatMessageList messages={messages} />
-
-      <form onSubmit={handleSubmit} className='mt-auto space-y-3 rounded-xl border border-zinc-200 bg-white p-4'>
-        <textarea
-          className='h-28 w-full resize-none rounded-lg border border-zinc-300 p-3 text-sm outline-none transition focus:border-brand-500 focus:ring-1 focus:ring-brand-500'
-          value={input}
-          placeholder={INPUT_PLACEHOLDER}
-          onChange={(event) => setInput(event.currentTarget.value)}
-        />
-
-        <div className='flex flex-wrap items-center gap-2'>
-          <button
-            type='submit'
-            disabled={isBusy}
-            className={clsx(
-              'rounded-lg px-4 py-2 text-sm font-medium text-white transition',
-              isBusy ? 'cursor-not-allowed bg-zinc-400' : 'bg-brand-600 hover:bg-brand-500',
-            )}
-          >
-            发送文本
-          </button>
-          <button
-            type='button'
-            disabled={isBusy}
-            onClick={handleImage}
-            className='rounded-lg border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-60'
-          >
-            生成图片
-          </button>
-          <button
-            type='button'
-            disabled={isBusy}
-            onClick={handleVideo}
-            className='rounded-lg border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-60'
-          >
-            生成视频
-          </button>
-          <button
-            type='button'
-            disabled={!isBusy}
-            onClick={handleStop}
-            className='rounded-lg border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-60'
-          >
-            停止生成
+      {displayLevel === 'error' ? (
+        <div
+          role='alert'
+          className='flex shrink-0 items-center justify-between border-b border-red-200 bg-red-50 px-4 py-2 text-xs text-red-700'
+        >
+          <span>{displayStatus}</span>
+          <button type='button' onClick={handleClearError} className='font-medium underline underline-offset-2'>
+            清除
           </button>
         </div>
+      ) : null}
 
-        {error ? (
-          <div className='rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700'>
-            <p>{error.message}</p>
-            <button type='button' onClick={clearError} className='mt-2 text-xs font-medium underline underline-offset-2'>
-              清除错误
-            </button>
-          </div>
-        ) : null}
-      </form>
+      <ChatMessageList messages={messages} isStreaming={isStreaming} />
+      <TypingIndicator visible={showTypingIndicator} message={displayStatus} />
+
+      <ChatInput
+        value={input}
+        isBusy={isBusy}
+        onChange={setInput}
+        onSubmit={handleSubmit}
+        onStop={handleStop}
+        onImage={handleImage}
+        onVideo={handleVideo}
+      />
+
+      <SystemPromptPanel
+        open={settingsOpen}
+        initialPrompt={systemPrompt}
+        onClose={() => setSettingsOpen(false)}
+        onSave={handleSaveSystemPrompt}
+      />
     </div>
   );
 };

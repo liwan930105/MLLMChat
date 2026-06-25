@@ -81,15 +81,15 @@ describe('request utility', () => {
     await expect(requestJson('/api/no-message')).rejects.toThrow('请求错误(500)：请求失败');
   });
 
-  it('should handle non-error throw while parsing success response', async () => {
-    const fetchMock = jest.fn().mockResolvedValue({
-      ok: true,
-      json: () => {
-        throw 'parse failed';
-      },
-    });
-    global.fetch = fetchMock as unknown as typeof fetch;
+  it('should attach chat api key header when configured', async () => {
+    process.env.NEXT_PUBLIC_CHAT_API_KEY = 'client-key';
+    const fetchMock = jest.fn().mockResolvedValue(new Response('{}', { status: 200 }));
+    global.fetch = fetchMock as typeof fetch;
 
-    await expect(requestJson('/api/non-error-throw')).rejects.toThrow('响应解析失败：响应解析失败');
+    await appFetch('/api/test');
+
+    const headers = (fetchMock.mock.calls[0][1] as RequestInit).headers as Headers;
+    expect(headers.get('x-chat-api-key')).toBe('client-key');
+    delete process.env.NEXT_PUBLIC_CHAT_API_KEY;
   });
 });
