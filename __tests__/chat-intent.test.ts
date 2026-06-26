@@ -24,16 +24,56 @@ describe('chat intent', () => {
     expect(detectIntentFromText('请帮我生成图片')).toBe('image');
   });
 
+  it('should detect image intent from help generate one image phrase', () => {
+    expect(detectIntentFromText('帮我生成一张图')).toBe('image');
+  });
+
   it('should detect image intent from draw request', () => {
     expect(detectIntentFromText('帮我画一张猫')).toBe('image');
   });
 
-  it('should detect video intent from chinese keyword', () => {
-    expect(detectIntentFromText('帮我做一个视频')).toBe('video');
+  it('should detect video intent from generate video phrase', () => {
+    expect(detectIntentFromText('生成视频')).toBe('video');
   });
 
-  it('should detect video intent from english keyword', () => {
-    expect(detectIntentFromText('make a short video about ocean')).toBe('video');
+  it('should detect video intent from make video phrase', () => {
+    expect(detectIntentFromText('做一个视频')).toBe('video');
+  });
+
+  it('should detect video intent from help generate phrase', () => {
+    expect(detectIntentFromText('帮我生成一个视频')).toBe('video');
+  });
+
+  it('should detect video intent from descriptive natural language', () => {
+    expect(detectIntentFromText('做一个夏季日落的视频')).toBe('video');
+  });
+
+  it('should detect video intent from generate descriptive phrase', () => {
+    expect(detectIntentFromText('生成夏季海边浪花的视频')).toBe('video');
+  });
+
+  it('should extract video prompt from descriptive natural language', () => {
+    expect(extractMediaPrompt('做一个夏季日落的视频', 'video')).toBe('夏季日落');
+  });
+
+  it('should detect image intent from descriptive natural language', () => {
+    expect(detectIntentFromText('画一张夏季日落的图片')).toBe('image');
+  });
+
+  it('should extract image prompt from descriptive natural language', () => {
+    expect(extractMediaPrompt('画一张夏季日落的图片', 'image')).toBe('夏季日落');
+  });
+
+  it('should detect image intent from make descriptive image phrase', () => {
+    expect(detectIntentFromText('做一个猫咪的图片')).toBe('image');
+  });
+
+  it('should extract image prompt from make descriptive image phrase', () => {
+    expect(extractMediaPrompt('做一个猫咪的图片', 'image')).toBe('猫咪');
+  });
+
+  it('should not detect video intent from casual mention', () => {
+    expect(detectIntentFromText('make a short video about ocean')).toBe('text');
   });
 
   it('should fallback to text intent', () => {

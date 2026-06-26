@@ -29,7 +29,8 @@ export const getDeepSeekLanguageModel = (): LanguageModel => {
     baseURL: baseUrl,
   });
 
-  return provider(modelId);
+  // DeepSeek 仅兼容 OpenAI Chat Completions，需使用 .chat() 而非默认的 Responses API
+  return provider.chat(modelId);
 };
 
 export const getDoubaoConfig = (): OpenAICompatibleConfig => {

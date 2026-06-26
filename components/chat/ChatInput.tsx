@@ -10,8 +10,6 @@ interface ChatInputProps {
   onChange: (value: string) => void;
   onSubmit: () => void;
   onStop: () => void;
-  onImage: () => void;
-  onVideo: () => void;
 }
 
 export const ChatInput = ({
@@ -20,10 +18,9 @@ export const ChatInput = ({
   onChange,
   onSubmit,
   onStop,
-  onImage,
-  onVideo,
 }: ChatInputProps): ReactElement => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const canSend = value.trim().length > 0;
 
   const resizeTextarea = useCallback((): void => {
     const textarea = textareaRef.current;
@@ -41,7 +38,7 @@ export const ChatInput = ({
   const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>): void => {
     if (event.key === 'Enter' && !event.shiftKey) {
       event.preventDefault();
-      if (!isBusy) {
+      if (!isBusy && canSend) {
         onSubmit();
       }
     }
@@ -49,14 +46,14 @@ export const ChatInput = ({
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>): void => {
     event.preventDefault();
-    if (!isBusy) {
+    if (!isBusy && canSend) {
       onSubmit();
     }
   };
 
   return (
     <footer className='shrink-0 border-t border-zinc-200/80 bg-[#f7f8fa] px-4 py-3'>
-      <form onSubmit={handleSubmit} className='mx-auto flex max-w-4xl flex-col gap-2'>
+      <form onSubmit={handleSubmit} className='mx-auto flex max-w-4xl flex-col gap-1'>
         <div className='flex items-end gap-2 rounded-2xl border border-zinc-200 bg-white px-3 py-2 shadow-sm'>
           <label htmlFor='chat-input' className='sr-only'>
             聊天输入框
@@ -85,43 +82,20 @@ export const ChatInput = ({
           ) : (
             <button
               type='submit'
+              disabled={!canSend}
               aria-label='发送消息'
-              className='shrink-0 rounded-xl bg-ding-500 px-4 py-1.5 text-xs font-medium text-white transition hover:bg-ding-600'
+              className={clsx(
+                'shrink-0 rounded-xl px-4 py-1.5 text-xs font-medium transition',
+                canSend
+                  ? 'bg-ding-500 text-white hover:bg-ding-600'
+                  : 'cursor-not-allowed bg-zinc-200 text-zinc-400',
+              )}
             >
               发送
             </button>
           )}
         </div>
-
-        <div className='flex flex-wrap items-center gap-2 px-1'>
-          <button
-            type='button'
-            disabled={isBusy}
-            onClick={onImage}
-            className={clsx(
-              'rounded-full border px-3 py-1 text-xs transition',
-              isBusy
-                ? 'cursor-not-allowed border-zinc-200 text-zinc-400'
-                : 'border-zinc-200 bg-white text-zinc-600 hover:border-ding-300 hover:text-ding-600',
-            )}
-          >
-            生成图片
-          </button>
-          <button
-            type='button'
-            disabled={isBusy}
-            onClick={onVideo}
-            className={clsx(
-              'rounded-full border px-3 py-1 text-xs transition',
-              isBusy
-                ? 'cursor-not-allowed border-zinc-200 text-zinc-400'
-                : 'border-zinc-200 bg-white text-zinc-600 hover:border-ding-300 hover:text-ding-600',
-            )}
-          >
-            生成视频
-          </button>
-          <span className='ml-auto text-[11px] text-zinc-400'>Enter 发送 · Shift+Enter 换行</span>
-        </div>
+        <p className='px-1 text-[11px] text-zinc-400'>Enter 发送 · Shift+Enter 换行</p>
       </form>
     </footer>
   );

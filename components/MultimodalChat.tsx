@@ -9,6 +9,7 @@ import { SystemPromptPanel } from '@/components/chat/SystemPromptPanel';
 import { TypingIndicator } from '@/components/chat/TypingIndicator';
 import { ChatMessageList } from '@/components/ChatMessageList';
 import { useChatPersistence } from '@/hooks/useChatPersistence';
+import { detectIntentFromText } from '@/lib/chat-intent';
 import { INTENT_BADGE_TEXT } from '@/lib/constants';
 import { loadSystemPrompt } from '@/lib/chat-storage';
 import { appFetch } from '@/lib/request';
@@ -89,62 +90,48 @@ export const MultimodalChat = (): ReactElement => {
   const isSubmitted = status === 'submitted';
   const isStreaming = status === 'streaming';
 
-  const buildRequestBody = useCallback(
-    (intentHint?: ChatIntentType): Record<string, unknown> => {
-      const body: Record<string, unknown> = {
-        systemPrompt,
-      };
-      if (intentHint) {
-        body.intentHint = intentHint;
-      }
-      return body;
-    },
-    [systemPrompt],
-  );
+  const buildRequestBody = useCallback((): Record<string, unknown> => {
+    return {
+      systemPrompt,
+    };
+  }, [systemPrompt]);
 
-  const sendWithIntent = useCallback(
-    async (intentHint?: ChatIntentType): Promise<void> => {
-      const prompt = normalizeInput(input);
-      const isMediaIntent = intentHint === 'image' || intentHint === 'video';
-
-      if (!prompt && !isMediaIntent) {
-        setRuntimeStatus('请输入内容后再发送');
-        setStatusLevel('error');
-        return;
-      }
-
-      clearError();
-      setStatusLevel('info');
-      setRuntimeStatus(isMediaIntent ? '正在准备生成...' : 'AI 正在思考...');
-
-      try {
-        await sendMessage(
-          { text: prompt },
-          {
-            body: buildRequestBody(intentHint),
-          },
-        );
-        setInput('');
-      } catch (sendError) {
-        const message = sendError instanceof Error ? sendError.message : '发送消息失败';
-        setRuntimeStatus(message);
-        setStatusLevel('error');
-      }
-    },
-    [buildRequestBody, clearError, input, sendMessage],
-  );
+  const getStatusMessageForIntent = (intent: ChatIntentType): string => {
+    if (intent === 'image') {
+      return '正在准备生成图片...';
+    }
+    if (intent === 'video') {
+      return '正在准备生成视频...';
+    }
+    return 'AI 正在思考...';
+  };
 
   const handleSubmit = useCallback(async (): Promise<void> => {
-    await sendWithIntent();
-  }, [sendWithIntent]);
+    const prompt = normalizeInput(input);
+    if (!prompt) {
+      return;
+    }
 
-  const handleImage = useCallback(async (): Promise<void> => {
-    await sendWithIntent('image');
-  }, [sendWithIntent]);
+    const intent = detectIntentFromText(prompt);
 
-  const handleVideo = useCallback(async (): Promise<void> => {
-    await sendWithIntent('video');
-  }, [sendWithIntent]);
+    clearError();
+    setStatusLevel('info');
+    setRuntimeStatus(getStatusMessageForIntent(intent));
+
+    try {
+      await sendMessage(
+        { text: prompt },
+        {
+          body: buildRequestBody(),
+        },
+      );
+      setInput('');
+    } catch (sendError) {
+      const message = sendError instanceof Error ? sendError.message : '发送消息失败';
+      setRuntimeStatus(message);
+      setStatusLevel('error');
+    }
+  }, [buildRequestBody, clearError, input, sendMessage]);
 
   const handleStop = useCallback(async (): Promise<void> => {
     await stop();
@@ -207,8 +194,6 @@ export const MultimodalChat = (): ReactElement => {
         onChange={setInput}
         onSubmit={handleSubmit}
         onStop={handleStop}
-        onImage={handleImage}
-        onVideo={handleVideo}
       />
 
       <SystemPromptPanel

@@ -23,6 +23,8 @@ describe('model providers', () => {
 
     const model = getDeepSeekLanguageModel();
     expect(typeof model).toBe('object');
+    expect((model as { provider?: string }).provider).toContain('chat');
+    expect((model as { modelId?: string }).modelId).toBe('deepseek-v4-pro');
   });
 
   it('should read doubao config from env', () => {

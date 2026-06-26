@@ -33,40 +33,7 @@ export const CHAT_SYSTEM_PROMPT_STORAGE_KEY = 'mllm-chat-system-prompt';
 export const CHAT_SESSION_ID_STORAGE_KEY = 'mllm-chat-session-id';
 export const MAX_STORED_MESSAGES = 200;
 
-export const INPUT_PLACEHOLDER = '输入消息，Enter 发送，Shift+Enter 换行';
-
-export const IMAGE_KEYWORDS = [
-  '生成图片',
-  '帮我生成一张图',
-  '帮我生成图片',
-  '帮我画',
-  '画一张',
-  '画个',
-  '画一幅',
-  '绘制',
-  '做一张图',
-  '图片',
-  '图像',
-  '生成图',
-  'image',
-  'draw',
-  'picture',
-];
-
-export const VIDEO_KEYWORDS = [
-  '生成视频',
-  '帮我生成一个视频',
-  '帮我做一个视频',
-  '做一个视频',
-  '做个视频',
-  '制作视频',
-  '视频',
-  '短片',
-  '动画',
-  'video',
-  'clip',
-  'movie',
-];
+export const INPUT_PLACEHOLDER = '输入消息，Enter 发送；说「生成图片」或「生成视频」可自动调用对应模型';
 
 export const INTENT_BADGE_TEXT: Record<ChatIntentType, string> = {
   text: '文本对话',

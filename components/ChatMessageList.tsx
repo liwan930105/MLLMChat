@@ -102,7 +102,7 @@ export const ChatMessageList = memo(function ChatMessageList({ messages, isStrea
             </div>
             <p className='text-sm font-medium text-zinc-700'>开始和 AI 助手聊天吧</p>
             <p className='mt-1 text-xs text-zinc-500'>
-              支持多轮对话、流式回复，说「帮我画一张…」或「做一个视频…」可自动生成
+              支持 DeepSeek 多轮文本对话；说「生成图片，内容是…」或「做一个视频…」将自动调用对应模型
             </p>
           </div>
         ) : (
