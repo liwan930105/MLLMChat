@@ -1,12 +1,34 @@
 import type { ReactElement } from 'react';
 
+/**
+ * ChatHeader 组件入参。
+ */
 interface ChatHeaderProps {
+  /** 页面主标题。 */
   title: string;
+  /** 副标题，通常由“当前意图 + 运行状态”组合而成。 */
   subtitle: string;
+  /** 打开系统提示词设置面板的回调。 */
   onOpenSettings: () => void;
+  /** 清空聊天历史的回调。 */
   onClearHistory: () => void;
 }
 
+/**
+ * 聊天页顶部栏。
+ *
+ * Props：
+ * - title：应用标题。
+ * - subtitle：状态副标题，展示最近意图与运行状态。
+ * - onOpenSettings：点击齿轮按钮时触发。
+ * - onClearHistory：点击清空按钮时触发。
+ *
+ * 主要状态：无本地状态，全部由父组件控制。
+ *
+ * 样式：
+ * - Tailwind 使用 shrink-0 固定高度，避免消息列表滚动时顶部被压缩。
+ * - 文案区域使用 truncate，保证窄屏下状态文字不撑破布局。
+ */
 export const ChatHeader = ({ title, subtitle, onOpenSettings, onClearHistory }: ChatHeaderProps): ReactElement => {
   return (
     <header className='flex shrink-0 items-center justify-between border-b border-zinc-200/80 bg-white px-4 py-3 shadow-sm'>
@@ -35,6 +57,7 @@ export const ChatHeader = ({ title, subtitle, onOpenSettings, onClearHistory }: 
           className='rounded-lg p-2 text-zinc-600 transition hover:bg-zinc-100'
           aria-label='系统提示词设置'
         >
+          {/* 内联 SVG 避免额外图标依赖，按钮语义由 aria-label 提供。 */}
           <svg viewBox='0 0 24 24' className='h-5 w-5' fill='none' stroke='currentColor' strokeWidth='2'>
             <path
               strokeLinecap='round'

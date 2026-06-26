@@ -3,13 +3,38 @@ import { useState, type ReactElement } from 'react';
 import { DEFAULT_SYSTEM_PROMPT } from '@/lib/constants';
 import { saveSystemPrompt } from '@/lib/chat-storage';
 
+/**
+ * SystemPromptPanel 组件入参。
+ */
 interface SystemPromptPanelProps {
+  /** 是否展示弹层。 */
   open: boolean;
+  /** 当前生效的系统提示词，用于初始化编辑草稿。 */
   initialPrompt: string;
+  /** 关闭弹层回调。 */
   onClose: () => void;
+  /** 保存成功后通知父组件更新系统提示词。 */
   onSave: (prompt: string) => void;
 }
 
+/**
+ * 系统提示词编辑弹层内容。
+ *
+ * Props：
+ * - initialPrompt：打开面板时的提示词快照。
+ * - onClose：关闭弹层。
+ * - onSave：把保存后的提示词同步给父组件。
+ *
+ * 主要状态：
+ * - draft：textarea 中正在编辑的提示词草稿。
+ *
+ * 关键事件：
+ * - 保存：写入 localStorage，并同步父组件状态。
+ * - 恢复默认：只重置草稿，用户仍需点击保存才生效。
+ *
+ * 样式：
+ * - 移动端贴近底部，sm 及以上居中展示，适配不同屏幕高度。
+ */
 const SystemPromptPanelContent = ({
   initialPrompt,
   onClose,
@@ -17,6 +42,9 @@ const SystemPromptPanelContent = ({
 }: Omit<SystemPromptPanelProps, 'open'>): ReactElement => {
   const [draft, setDraft] = useState<string>(initialPrompt);
 
+  /**
+   * 保存当前草稿。
+   */
   const handleSave = (): void => {
     const normalized = draft.trim() || DEFAULT_SYSTEM_PROMPT;
     saveSystemPrompt(normalized);
@@ -24,6 +52,9 @@ const SystemPromptPanelContent = ({
     onClose();
   };
 
+  /**
+   * 将编辑草稿恢复为默认提示词。
+   */
   const handleReset = (): void => {
     setDraft(DEFAULT_SYSTEM_PROMPT);
   };
@@ -66,6 +97,17 @@ const SystemPromptPanelContent = ({
   );
 };
 
+/**
+ * 系统提示词面板外层组件。
+ *
+ * Props：
+ * - open：为 false 时返回 null，不渲染弹层 DOM。
+ * - initialPrompt：当前系统提示词。
+ * - onClose/onSave：关闭和保存事件。
+ *
+ * 关键逻辑：
+ * - key={initialPrompt} 让每次保存后重新打开面板时，内部 draft 与最新提示词同步。
+ */
 export const SystemPromptPanel = ({ open, initialPrompt, onClose, onSave }: SystemPromptPanelProps): ReactElement | null => {
   if (!open) {
     return null;
